@@ -1,0 +1,7 @@
+.settings
+.vscode
+Debug
+.cproject
+.project
+*.launch
+STM32F439ZITX_FLASH.ld
