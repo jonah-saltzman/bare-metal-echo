@@ -4,6 +4,50 @@
 #include "../Inc/display.h"
 #include "../Inc/timers.h"
 
+void SystemInit(void)
+{
+	ClockInit clock_settings = {0};
+
+	clock_settings.pll_source = PLL_SOURCE_HSE;
+	clock_settings.sys_source = CLK_SOURCE_PLL;
+	clock_settings.systick_source = SYSTICK_SOURCE_HCLK_DIV8;
+	clock_settings.timpre = 0UL;
+
+	clock_settings.pll_q = 4UL;
+	clock_settings.pll_p = PLLP_2;
+	clock_settings.pll_n = 160UL;
+	clock_settings.pll_m = 4UL;
+
+	clock_settings.ahb_pre = AHB_1;
+	clock_settings.apb2_pre = APBx_2;
+	clock_settings.apb1_pre = APBx_4;
+
+	clock_settings.ahb1_enr = (
+		RCC_AHB1ENR_GPIOAEN | 
+		RCC_AHB1ENR_GPIOBEN | 
+		RCC_AHB1ENR_GPIOCEN |
+		RCC_AHB1ENR_GPIODEN |
+		RCC_AHB1ENR_GPIOEEN |
+		RCC_AHB1ENR_DMA1EN  |
+		RCC_AHB1ENR_DMA2EN
+	);
+
+	clock_settings.apb1_enr = (
+		RCC_APB1ENR_PWREN    |
+		RCC_APB1ENR_USART3EN |
+		RCC_APB1ENR_TIM2EN   |
+		RCC_APB1ENR_TIM5EN
+	);
+
+	clock_settings.apb2_enr = (
+		RCC_APB2ENR_TIM10EN |
+		RCC_APB2ENR_SYSCFGEN
+	);
+	if (enable_clocks(&clock_settings, &clocks) != 0)
+		abort();
+	enable_uart3();
+}
+
 void enable_uart3(void)
 {
 	// alternate functions
@@ -431,48 +475,4 @@ void initialize_systicks(void)
 {
 	SysTick->CTRL |= 0b11;
 	SysTick->LOAD = 0xFFFFF;
-}
-
-void SystemInit(void)
-{
-	ClockInit clock_settings = {0};
-
-	clock_settings.pll_source = PLL_SOURCE_HSE;
-	clock_settings.sys_source = CLK_SOURCE_PLL;
-	clock_settings.systick_source = SYSTICK_SOURCE_HCLK_DIV8;
-	clock_settings.timpre = 0UL;
-
-	clock_settings.pll_q = 4UL;
-	clock_settings.pll_p = PLLP_2;
-	clock_settings.pll_n = 160UL;
-	clock_settings.pll_m = 4UL;
-
-	clock_settings.ahb_pre = AHB_1;
-	clock_settings.apb2_pre = APBx_2;
-	clock_settings.apb1_pre = APBx_4;
-
-	clock_settings.ahb1_enr = (
-		RCC_AHB1ENR_GPIOAEN | 
-		RCC_AHB1ENR_GPIOBEN | 
-		RCC_AHB1ENR_GPIOCEN |
-		RCC_AHB1ENR_GPIODEN |
-		RCC_AHB1ENR_GPIOEEN |
-		RCC_AHB1ENR_DMA1EN  |
-		RCC_AHB1ENR_DMA2EN
-	);
-
-	clock_settings.apb1_enr = (
-		RCC_APB1ENR_PWREN    |
-		RCC_APB1ENR_USART3EN |
-		RCC_APB1ENR_TIM2EN   |
-		RCC_APB1ENR_TIM5EN
-	);
-
-	clock_settings.apb2_enr = (
-		RCC_APB2ENR_TIM10EN |
-		RCC_APB2ENR_SYSCFGEN
-	);
-	if (enable_clocks(&clock_settings, &clocks) != 0)
-		abort();
-	enable_uart3();
 }
