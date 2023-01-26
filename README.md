@@ -11,7 +11,7 @@ use an auto-generated linker script and startup assembly file which
 zero-fills the `bss` segment and which I modified to call my 
 initialization procedure.
 
-My hand-rolled board initialization procedure can be found in `/Src/init.c`
+My hand-rolled board initialization procedure can be found in [/Src/init.c](Src/init.c)
 
 ## Echo
 
