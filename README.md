@@ -1,4 +1,4 @@
-# Bare-metal STM32 Project 0
+# Bare-metal STM32 Project 0: Echo
 
 In these projects, I implement common or interesting functions using
 an STM32F439ZI MCU on a Nucleo-144 board, from the ground up. I do not
