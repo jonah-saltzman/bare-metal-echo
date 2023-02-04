@@ -1,67 +1,20 @@
 #include <stdio.h>
-#include "../Inc/sys/stm32f439xx.h"
-#include "../Inc/init.h"
-#include "../Inc/display.h"
-#include "../Inc/timers.h"
+#include "sys/stm32f439xx.h"
+#include "init.h"
+#include "timers.h"
 
-void SystemInit(void)
-{
-	ClockInit clock_settings = {0};
-
-	clock_settings.pll_source = PLL_SOURCE_HSE;
-	clock_settings.sys_source = CLK_SOURCE_PLL;
-	clock_settings.systick_source = SYSTICK_SOURCE_HCLK_DIV8;
-	clock_settings.timpre = 0UL;
-
-	clock_settings.pll_q = 4UL;
-	clock_settings.pll_p = PLLP_2;
-	clock_settings.pll_n = 160UL;
-	clock_settings.pll_m = 4UL;
-
-	clock_settings.ahb_pre = AHB_1;
-	clock_settings.apb2_pre = APBx_2;
-	clock_settings.apb1_pre = APBx_4;
-
-	clock_settings.ahb1_enr = (
-		RCC_AHB1ENR_GPIOAEN | 
-		RCC_AHB1ENR_GPIOBEN | 
-		RCC_AHB1ENR_GPIOCEN |
-		RCC_AHB1ENR_GPIODEN |
-		RCC_AHB1ENR_GPIOEEN |
-		RCC_AHB1ENR_DMA1EN  |
-		RCC_AHB1ENR_DMA2EN
-	);
-
-	clock_settings.apb1_enr = (
-		RCC_APB1ENR_PWREN    |
-		RCC_APB1ENR_USART3EN |
-		RCC_APB1ENR_TIM2EN   |
-		RCC_APB1ENR_TIM5EN
-	);
-
-	clock_settings.apb2_enr = (
-		RCC_APB2ENR_TIM10EN |
-		RCC_APB2ENR_SYSCFGEN
-	);
-	if (enable_clocks(&clock_settings, &clocks) != 0)
-		abort();
-	enable_uart3();
-}
+ClockSpeeds clocks __attribute__((section("DATA")));
 
 void enable_uart3(void)
 {
-	// alternate functions
 	GPIOD->MODER |= (GPIO_MODER_MODER8_1 | GPIO_MODER_MODER9_1);
 	GPIOD->AFR[1] |= ((0x7UL << GPIO_AFRH_AFSEL8_Pos) | (0x7UL << GPIO_AFRH_AFSEL9_Pos));
 
-	USART3->CR1 |= ((1UL << 13) | (1UL << 5)); // uart enable & RXNE interrupt enable
+	USART3->CR1 |= (1UL << 13); // uart enable
 	
 	USART3->BRR = 0x15B; // 0x15 = 21; 0xB = 11; 11/16 ~= 0.701 + 21 = 21.701
 
-	USART3->CR1 |= ((1UL << 3) | (1UL << 2)); // tx & rx enable
-
-	NVIC_SetPriority(USART3_IRQn, 30);
-	NVIC_EnableIRQ(USART3_IRQn);
+	USART3->CR1 |= (1UL << 3); // tx enable
 }
 
 void abort(void)
@@ -366,91 +319,22 @@ uint32_t pll_P_scale(uint32_t x)
     }
 }
 
-void initialize_TIM2_5(
-	TIM_TypeDef* timer, 
-	uint32_t arr_val,
-	uint8_t is_stopwatch, 
-	uint32_t irq_prio
-)
-{
-	uint32_t arr;
-	if (is_stopwatch)
-	{
-		arr = clocks.tim1clk / arr_val;
-	}
-	else
-	{
-		arr = (clocks.tim1clk / MILLION(1)) * arr_val;
-		timer->CR1 |= (1UL << 3); // one-pulse mode
-	}
-	timer->CR1 |= (1UL << 2); // update interrupt only on overflow
-	timer->ARR = arr;
-	timer->EGR |= 1UL; // reset registers
-	timer->DIER |= 1UL; // update interrupts enabled
-	timer->CR1 &= (~1UL); // turn off the timer
-
-	uint32_t irq_n = (uint32_t)timer == TIM2_BASE ? TIM2_IRQn : TIM5_IRQn;
-	NVIC_SetPriority(irq_n, irq_prio);
-	NVIC_EnableIRQ(irq_n);
-}
-
-void initialize_TIM10_11_TIM13_14_stopwatch(
-	TIM_TypeDef* timer,
-	ClockSpeeds* speeds,
-	uint32_t resolution,
-	uint32_t irq_prio
-)
-{
-	uint32_t arr = speeds->tim2clk / resolution;
-	uint32_t irq_n;
-	if (arr > UINT16_MAX)
-	{
-		printf("ARR of %lu > UINT16MAX\n", arr);
-		abort();
-	}
-	timer->CR1 |= (1UL << 2);
-	timer->ARR = (arr & 0xFFFF);
-	timer->EGR |= 1UL;
-	timer->DIER |= 1UL;
-	timer->CR1 &= (~1UL);
-
-	switch((uint32_t)timer) {
-		case TIM10_BASE:
-			irq_n = TIM1_UP_TIM10_IRQn;
-			break;
-		case TIM11_BASE:
-			irq_n = TIM1_TRG_COM_TIM11_IRQn;
-			break;
-		case TIM13_BASE:
-			irq_n = TIM8_UP_TIM13_IRQn;
-			break;
-		case TIM14_BASE:
-			irq_n = TIM8_TRG_COM_TIM14_IRQn;
-			break;
-		default:
-			abort();
-	}
-
-	NVIC_SetPriority(irq_n, irq_prio);
-	NVIC_EnableIRQ(irq_n);
-}
-
 void initialize_IO(void)
 {
 	GPIOB->MODER &= (~(GPIO_MODER_MODER7_0 | GPIO_MODER_MODER0_0 | GPIO_MODER_MODER14_0 | GPIO_MODER_MODER5_0));
 	GPIOB->MODER |= (GPIO_MODER_MODER7_0 | GPIO_MODER_MODER0_0 | GPIO_MODER_MODER14_0 | GPIO_MODER_MODER5_0);
 
-	// GPIOA->MODER &= ~(GPIO_MODER_MODER5_Msk | GPIO_MODER_MODER6_Msk | GPIO_MODER_MODER7_Msk | GPIO_MODER_MODER3_Msk);
-	// GPIOA->MODER |= (GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0 | GPIO_MODER_MODER3_0);
+	GPIOA->MODER &= ~(GPIO_MODER_MODER5_Msk | GPIO_MODER_MODER6_Msk | GPIO_MODER_MODER7_Msk | GPIO_MODER_MODER3_Msk);
+	GPIOA->MODER |= (GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0 | GPIO_MODER_MODER3_0);
 
-	// GPIOE->MODER |= (GPIO_MODER_MODER0_0  | 
-	// 				 GPIO_MODER_MODER2_0  | 
-	// 				 GPIO_MODER_MODER7_0  | 
-	// 				 GPIO_MODER_MODER8_0  | 
-	// 				 GPIO_MODER_MODER9_0  | 
-	// 				 GPIO_MODER_MODER11_0 | 
-	// 				 GPIO_MODER_MODER13_0 | 
-	// 				 GPIO_MODER_MODER15_0 );
+	GPIOE->MODER |= (GPIO_MODER_MODER0_0  | 
+					 GPIO_MODER_MODER2_0  | 
+					 GPIO_MODER_MODER7_0  | 
+					 GPIO_MODER_MODER8_0  | 
+					 GPIO_MODER_MODER9_0  | 
+					 GPIO_MODER_MODER11_0 | 
+					 GPIO_MODER_MODER13_0 | 
+					 GPIO_MODER_MODER15_0 );
 }
 
 void enable_ext_intr(uint32_t irq_prio)
@@ -475,4 +359,48 @@ void initialize_systicks(void)
 {
 	SysTick->CTRL |= 0b11;
 	SysTick->LOAD = 0xFFFFF;
+}
+
+void SystemInit(void)
+{
+	ClockInit clock_settings = {0};
+
+	clock_settings.pll_source = PLL_SOURCE_HSE;
+	clock_settings.sys_source = CLK_SOURCE_PLL;
+	clock_settings.systick_source = SYSTICK_SOURCE_HCLK_DIV8;
+	clock_settings.timpre = 0UL;
+
+	clock_settings.pll_q = 4UL;
+	clock_settings.pll_p = PLLP_2;
+	clock_settings.pll_n = 160UL;
+	clock_settings.pll_m = 4UL;
+
+	clock_settings.ahb_pre = AHB_1;
+	clock_settings.apb2_pre = APBx_2;
+	clock_settings.apb1_pre = APBx_4;
+
+	clock_settings.ahb1_enr = (
+		RCC_AHB1ENR_GPIOAEN | 
+		RCC_AHB1ENR_GPIOBEN | 
+		RCC_AHB1ENR_GPIOCEN |
+		RCC_AHB1ENR_GPIODEN |
+		RCC_AHB1ENR_GPIOEEN |
+		RCC_AHB1ENR_DMA1EN  |
+		RCC_AHB1ENR_DMA2EN
+	);
+
+	clock_settings.apb1_enr = (
+		RCC_APB1ENR_PWREN    |
+		RCC_APB1ENR_USART3EN |
+		RCC_APB1ENR_TIM2EN   |
+		RCC_APB1ENR_TIM5EN
+	);
+
+	clock_settings.apb2_enr = (
+		RCC_APB2ENR_TIM10EN |
+		RCC_APB2ENR_SYSCFGEN
+	);
+	if (enable_clocks(&clock_settings, &clocks) != 0)
+		abort();
+	enable_uart3();
 }

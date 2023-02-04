@@ -1,7 +1,9 @@
 .settings
 .vscode
 Debug
+Release
 .cproject
 .project
 *.launch
 STM32F439ZITX_FLASH.ld
+*.json

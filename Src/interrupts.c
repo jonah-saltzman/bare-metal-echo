@@ -1,45 +1,10 @@
 #include <stdio.h>
-#include "../Inc/sys/stm32f4xx.h"
-#include "../Inc/timers.h"
-#include "../Inc/display.h"
-#include "../Inc/io.h"
-
-void USART3_IRQHandler(void)
-{
-	uint8_t ch = USART3->DR & 0xFF;
-	rxbuffer[rxbuffer_pos] = ch;
-	++rxbuffer_pos;
-	uart3_writechar(ch);
-	if (ch == '\n')
-		line_ready = 1;
-}
-
-void TIM2_IRQHandler(void)
-{
-	TIM2->SR &= (~1UL);
-	GPIOB->ODR &= ~GPIO_ODR_OD14_Msk;
-}
-
-void TIM5_IRQHandler(void)
-{
-	TIM5->SR &= (~1UL);
-	GPIOB->ODR &= ~GPIO_ODR_OD0_Msk;
-}
+#include "sys/stm32f4xx.h"
+#include "timers.h"
 
 void TIM1_UP_TIM10_IRQHandler(void)
 {
-	TIM10->SR &= (~1UL);
-	// if (timer10_ticks)
-	// {
-	// 	--timer10_ticks;
-	// }
-	// else
-	// {
-	// 	GPIOB->ODR &= (~GPIO_ODR_OD14_Msk);
-	// 	TIM10->CR1 &= (~1UL);
-	// 	timer10_counting = 0;
-	// 	printf("error led done\n");
-	// }
+	
 }
 
 
@@ -47,14 +12,14 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void EXTI15_10_IRQHandler(void)
 {
 	EXTI->PR |= EXTI_PR_PR13;
-	// if (timer5_counting)
-	// {
-	// 	stop_timer(TIM5);
-	// }
-	// else
-	// {
-	// 	start_timer(TIM5);
-	// }
+	if (tim5.status & TIM_STATUS_COUNTING_UP)
+	{
+		stop_timer(&tim5);
+	}
+	else
+	{
+		start_timer(&tim5);
+	}
 }
 
 
