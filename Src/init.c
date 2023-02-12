@@ -1,8 +1,34 @@
 #include "sys/stm32f439xx.h"
 #include "init.h"
 #include "timers.h"
+#include "dma.h"
 
 ClockSpeeds clocks __attribute__((section("DATA")));
+
+void enable_uart3_dma(void)
+{
+	// disable stream
+	reset_dma(DMA1_Stream3);
+
+	uint32_t regs = DMA_SxCR_CHSEL_2; 		 // select channel 4
+	regs |= (DMA_SxCR_PL_0 | DMA_SxCR_PL_1); // very high priority
+	regs |= (0b00 << DMA_SxCR_MSIZE_Pos);    // byte size
+	regs |= (0b00 << DMA_SxCR_PSIZE_Pos);    // byte size
+	regs |= (DMA_SxCR_MINC);				 // memory pointer increment
+	regs |= (0b0 << DMA_SxCR_PINC_Pos);      // no peripheral increment
+	regs |= (DMA_SxCR_DIR_0);				 // memory-to-peripheral
+	//regs |= (DMA_SxCR_PFCTRL); 		     // peripheral flow controller
+	regs |= (DMA_SxCR_TCIE | DMA_SxCR_DMEIE | DMA_SxCR_HTIE | DMA_SxCR_TEIE);
+
+	DMA1_Stream3->CR = (regs);
+
+	DMA1_Stream3->FCR = ((1UL << 7) & (~(1UL << 2)));
+
+	DMA1_Stream3->PAR = (uint32_t)USART3->DR;
+
+	NVIC_SetPriority(DMA1_Stream3_IRQn, 25);
+	NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+}
 
 void enable_uart3(void)
 {
@@ -15,6 +41,10 @@ void enable_uart3(void)
 	USART3->BRR = 0x15B; // 0x15 = 21; 0xB = 11; 11/16 ~= 0.701 + 21 = 21.701
 
 	USART3->CR1 |= ((1UL << 3) | (1UL << 2)); // tx & rx enable
+
+	USART3->CR3 |= (1UL << 7); // DMA transmitter
+
+	enable_uart3_dma();
 
 	NVIC_SetPriority(USART3_IRQn, 30);
 	NVIC_EnableIRQ(USART3_IRQn);

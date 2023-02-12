@@ -1,19 +1,58 @@
 #include "sys/stm32f4xx.h"
 #include "init.h"
 #include "io.h"
+#include "dma.h"
 
 static struct IOBuffer rxbuffer = {0};
 
+static struct IOBuffer dmabuffer = {0};
+
 static volatile uint8_t line_ready = 0;
+
+static volatile uint8_t dma_tx_complete = 0;
+
+static volatile uint32_t dma_stream3_isr = 0;
+static volatile uint32_t uart_sr = 0;
+
+void basic_transfer(const char* str, uint16_t len)
+{
+	reset_dma(DMA1_Stream3);
+	DMA1_Stream3->M0AR = (uint32_t)str;
+	DMA1_Stream3->NDTR = len;
+	USART3->SR &= (~1UL << 6); // clear TC bit
+	DMA1_Stream3->CR |= 1UL;
+	while (!dma_tx_complete)
+		__WFI();
+	while ((USART3->SR & (1UL << 7)) == 0)
+		;
+	dma_tx_complete = 0;
+}
 
 void static_print(const char *ptr, uint8_t r)
 {
+	flush_buf(&dmabuffer);
 	while (*ptr != '\0')
-		__io_putchar(*ptr++);
+		writec_buf(&dmabuffer, *ptr++);
 	if (r)
 	{
-		__io_putchar('\r');
+		writec_buf(&dmabuffer, '\r');
 	}
+	reset_dma(DMA1_Stream3);
+	DMA1_Stream3->M0AR = (uint32_t)&(dmabuffer.buf);
+	DMA1_Stream3->NDTR = dmabuffer.writer;
+	USART3->SR &= (~1UL << 7);
+	DMA1_Stream3->CR |= 1UL;
+	while (!dma_tx_complete)
+		__WFI();
+	while ((USART3->SR & (1UL << 7)) == 0)
+		;
+	dma_tx_complete = 0;
+}
+
+void flush_buf(IOBuffer *buf)
+{
+	buf->reader = 0;
+	buf->writer = 0;
 }
 
 int read_buf(IOBuffer *buf, uint8_t *dst, uint16_t len)
@@ -60,7 +99,7 @@ unsigned char readc_buf(IOBuffer *buf)
 	return c;
 }
 
-int readline(const char *prompt, unsigned char* buf)
+int readline(const char *prompt, unsigned char *buf)
 {
 	if (prompt)
 		static_print((char *)prompt, 0);
@@ -68,13 +107,27 @@ int readline(const char *prompt, unsigned char* buf)
 		__WFI();
 	unsigned char c;
 	int i = 0;
-	while ((c = readc_buf(&rxbuffer)) != '\n') {
+	while ((c = readc_buf(&rxbuffer)) != '\n')
+	{
 		buf[i] = c;
 		++i;
 	}
 	buf[i] = '\0';
 	line_ready = 0;
 	return i + 1;
+}
+
+void DMA1_Stream3_IRQHandler(void)
+{
+	uint32_t sr = DMA1->LISR;
+	if (sr & (TCIF_BIT << STREAM3_7_SHIFT))
+	{
+		dma_tx_complete = 1;
+		return;
+	}
+	dma_stream3_isr = sr;
+	uart_sr = USART3->SR;
+	abort();
 }
 
 void USART3_IRQHandler(void)

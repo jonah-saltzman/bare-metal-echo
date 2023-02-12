@@ -5,8 +5,8 @@
 
 int main(void)
 {
-
-	static_print("welcome...\n", 0);
+	const char* m = "welcome...\n";
+	basic_transfer(m, 11);
 	unsigned char msg[100];
 	while (1)
 	{
