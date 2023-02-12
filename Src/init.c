@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "sys/stm32f439xx.h"
 #include "init.h"
 #include "timers.h"
@@ -7,14 +6,18 @@ ClockSpeeds clocks __attribute__((section("DATA")));
 
 void enable_uart3(void)
 {
+	// alternate functions
 	GPIOD->MODER |= (GPIO_MODER_MODER8_1 | GPIO_MODER_MODER9_1);
 	GPIOD->AFR[1] |= ((0x7UL << GPIO_AFRH_AFSEL8_Pos) | (0x7UL << GPIO_AFRH_AFSEL9_Pos));
 
-	USART3->CR1 |= (1UL << 13); // uart enable
+	USART3->CR1 |= ((1UL << 13) | (1UL << 5)); // uart enable & RXNE interrupt enable
 	
 	USART3->BRR = 0x15B; // 0x15 = 21; 0xB = 11; 11/16 ~= 0.701 + 21 = 21.701
 
-	USART3->CR1 |= (1UL << 3); // tx enable
+	USART3->CR1 |= ((1UL << 3) | (1UL << 2)); // tx & rx enable
+
+	NVIC_SetPriority(USART3_IRQn, 30);
+	NVIC_EnableIRQ(USART3_IRQn);
 }
 
 void abort(void)

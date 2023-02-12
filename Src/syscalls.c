@@ -78,37 +78,8 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
   return len;
 }
 
-void force_print(char* ptr, unsigned len, uint32_t r)
-{
-  unsigned DataIdx;
-  for (DataIdx = 0; DataIdx < len; DataIdx++)
-  {
-    __io_putchar(*ptr++);
-  }
-  if (r)
-  {
-    __io_putchar('\r');
-  }
-}
-
 __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
-  // if (exc_num)
-  // {
-  //   if (IS_MAIN_DEBUGGING || IS_INTR_DEBUGGING)
-  //   {
-  //     sprintf(msg, "exc %lu interrupted %lu\n", exc_num, get_debugging_intr());
-  //     force_print(msg, strlen(msg), 1);
-  //     abort();
-  //   }
-  //   // sprintf(msg, "exc %lu is debugging\n", exc_num);
-  //   // force_print(msg, strlen(msg), 1);
-  //   //set_debugging_intr(exc_num);
-  // }
-  // else
-  // {
-  //   set_main_debugging();
-  // }
   (void)file;
   int DataIdx;
   for (DataIdx = 0; DataIdx < len; DataIdx++)
@@ -116,11 +87,6 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
     __io_putchar(*ptr++);
   }
   __io_putchar('\r');
-  // if (exc_num) {
-  //   clear_debugging_intr();
-  // } else {
-  //   clear_main_debugging();
-  // }
   return len;
 }
 
@@ -169,8 +135,7 @@ void reset(void)
 
 void reset_terminal(void)
 {
-  clear();
-  reset();
+
 }
 
 int _open(char *path, int flags, ...)
@@ -179,8 +144,8 @@ int _open(char *path, int flags, ...)
   (void)flags;
   /* Pretend like we always fail */
   //__io_putchar('\r');
- clear();
- reset();
+//  clear();
+//  reset();
   return -1;
 }
 

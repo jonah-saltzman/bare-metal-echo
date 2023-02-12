@@ -1,6 +1,6 @@
-#include <stdio.h>
 #include "sys/stm32f4xx.h"
 #include "timers.h"
+#include "io.h"
 
 void TIM1_UP_TIM10_IRQHandler(void)
 {
@@ -27,17 +27,17 @@ void HardFault_Handler(void)
 {
 	if (SCB->HFSR & (1UL << 30))
 	{
-		printf("FORCED hard fault\n");
-		printf("MMFAR: %p\n", (void*)SCB->MMFAR);
-		printf("BFAR: %p\n", (void*)SCB->BFAR);
-		printf("MMFAR valid: %s\n", (SCB->CFSR & SCB_CFSR_MMARVALID_Msk) ? "true" : "false");
-		printf("BFAR valid: %s\n", (SCB->CFSR & SCB_CFSR_BFARVALID_Msk) ? "true" : "false");
-		uint32_t cfsr = SCB->CFSR;
-		cfsr++;
+		static_print("FORCED hard fault\n", 1);
+		// printf("MMFAR: %p\n", (void*)SCB->MMFAR);
+		// printf("BFAR: %p\n", (void*)SCB->BFAR);
+		// printf("MMFAR valid: %s\n", (SCB->CFSR & SCB_CFSR_MMARVALID_Msk) ? "true" : "false");
+		// printf("BFAR valid: %s\n", (SCB->CFSR & SCB_CFSR_BFARVALID_Msk) ? "true" : "false");
+		// uint32_t cfsr = SCB->CFSR;
+		// cfsr++;
 	}
 	if (SCB->HFSR & (1UL << 1))
 	{
-		printf("Vector table fault\n");
+		static_print("Vector table fault\n", 1);
 	}
 	while (1)
 	{
